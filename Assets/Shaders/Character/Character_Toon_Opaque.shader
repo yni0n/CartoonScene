@@ -11,6 +11,8 @@ Shader "CartoonScene/Character/Toon_Opaque"
         _SpecularThreshold("Specular Threshold", Range(0, 1)) = 0.5
         _RimColor("Rim Color", Color) = (1, 1, 1, 1)
         _RimThreshold("Rim Threshold", Range(0, 1)) = 0.6
+        _OutlineWidth("Outline Width", Range(0, 0.1)) = 0.02
+        _OutlineColor("Outline Color", Color) = (0.2, 0.15, 0.2, 1)
     }
 
     SubShader
@@ -19,6 +21,7 @@ Shader "CartoonScene/Character/Toon_Opaque"
 
         Pass
         {
+            Tags { "LightMode" = "UniversalForward" }
             HLSLPROGRAM
 
             #pragma vertex vert
@@ -51,5 +54,33 @@ Shader "CartoonScene/Character/Toon_Opaque"
 
             ENDHLSL
         }
+
+        Pass
+        {
+            Name "Outline"
+            Tags { "LightMode" = "SRPDefaultUnlit" }
+            Cull Front
+
+            HLSLPROGRAM
+            #pragma vertex OutlineVert
+            #pragma fragment OutlineFrag
+
+            #include "../Common/Toon_Common.hlsl"
+
+            Varyings OutlineVert(Attributes IN)
+            {
+                Varyings OUT;
+                float3 inflated = IN.positionOS.xyz + IN.normalOS * _OutlineWidth;
+                OUT.positionHCS = TransformObjectToHClip(inflated);
+                return OUT;
+            }
+
+            half4 OutlineFrag(Varyings IN) : SV_Target
+            {
+                return _OutlineColor;
+            }
+            ENDHLSL
+        }
+
     }
 }

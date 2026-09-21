@@ -21,6 +21,8 @@ CBUFFER_START(UnityPerMaterial)
     half _SpecularThreshold;
     half4 _RimColor;
     half _RimThreshold;
+    half _OutlineWidth;
+    half4 _OutlineColor;
 CBUFFER_END
 
 #include "Toon_Surface.hlsl"
