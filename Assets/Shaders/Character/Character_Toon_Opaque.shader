@@ -70,8 +70,13 @@ Shader "CartoonScene/Character/Toon_Opaque"
             Varyings OutlineVert(Attributes IN)
             {
                 Varyings OUT;
-                float3 inflated = IN.positionOS.xyz + IN.normalOS * _OutlineWidth;
-                OUT.positionHCS = TransformObjectToHClip(inflated);
+                float4 posCS = TransformObjectToHClip(IN.positionOS.xyz);
+                float3 viewNormal = normalize(TransformWorldToViewDir(TransformObjectToWorldNormal(IN.normalOS)));
+                float aspect = _ScreenParams.x / _ScreenParams.y;
+                posCS.x += viewNormal.x * _OutlineWidth * posCS.w * 0.2;
+                posCS.y += viewNormal.y * _OutlineWidth * posCS.w * 0.2 * aspect * _ProjectionParams.x;
+                OUT.positionHCS = posCS;
+                OUT.uv = viewNormal.xy * 0.5 + 0.5;
                 return OUT;
             }
 

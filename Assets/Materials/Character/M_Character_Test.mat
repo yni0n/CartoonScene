@@ -102,18 +102,18 @@ Material:
     - _GlossyReflections: 0
     - _Metallic: 0
     - _OcclusionStrength: 1
-    - _OutlineWidth: 0.0891
+    - _OutlineWidth: 0.065
     - _Parallax: 0.005
     - _QueueOffset: 0
     - _ReceiveShadows: 1
-    - _RimThreshold: 1
-    - _ShadowSmoothness: 0.011
-    - _ShadowThreshold: 0.476
+    - _RimThreshold: 0.661
+    - _ShadowSmoothness: 0.001
+    - _ShadowThreshold: 0.39
     - _Smoothness: 0.5
     - _SmoothnessTextureChannel: 0
     - _SpecularHighlights: 1
-    - _SpecularPower: 52.3
-    - _SpecularThreshold: 0.253
+    - _SpecularPower: 49.9
+    - _SpecularThreshold: 0.327
     - _SrcBlend: 1
     - _SrcBlendAlpha: 1
     - _Surface: 0
@@ -124,7 +124,7 @@ Material:
     - _BaseColor: {r: 1, g: 1, b: 1, a: 1}
     - _Color: {r: 1, g: 1, b: 1, a: 1}
     - _EmissionColor: {r: 0, g: 0, b: 0, a: 1}
-    - _OutlineColor: {r: 0.30733025, g: 0.21512195, b: 0.45911938, a: 1}
+    - _OutlineColor: {r: 0.10954559, g: 0.06487081, b: 0.5031446, a: 1}
     - _RimColor: {r: 1, g: 1, b: 1, a: 1}
     - _ShadowColor: {r: 0.7, g: 0.75, b: 0.9, a: 1}
     - _SpecColor: {r: 0.19999996, g: 0.19999996, b: 0.19999996, a: 1}
