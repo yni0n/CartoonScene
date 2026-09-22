@@ -71,12 +71,14 @@ Shader "CartoonScene/Character/Toon_Opaque"
             {
                 Varyings OUT;
                 float4 posCS = TransformObjectToHClip(IN.positionOS.xyz);
-                float3 viewNormal = normalize(TransformWorldToViewDir(TransformObjectToWorldNormal(IN.normalOS)));
+                float3 outlineNormalOS = dot(IN.smoothNormalOS, IN.smoothNormalOS) > 0.001
+                       ? IN.smoothNormalOS
+                       : IN.normalOS;
+                float3 viewNormal = normalize(TransformWorldToViewDir(TransformObjectToWorldNormal(outlineNormalOS)));
                 float aspect = _ScreenParams.x / _ScreenParams.y;
                 posCS.x += viewNormal.x * _OutlineWidth * posCS.w * 0.2;
                 posCS.y += viewNormal.y * _OutlineWidth * posCS.w * 0.2 * aspect * _ProjectionParams.x;
                 OUT.positionHCS = posCS;
-                OUT.uv = viewNormal.xy * 0.5 + 0.5;
                 return OUT;
             }
 
