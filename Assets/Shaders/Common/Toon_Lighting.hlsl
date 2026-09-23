@@ -18,7 +18,8 @@ half3 ToonDiffuse(half3 baseColor, half3 normalWS, Light mainLight,
     half lightAtten = smoothstep(threshold - smoothness, threshold + smoothness, lambert);
 
     half3 litColor = baseColor * mainLight.color;
-    half3 darkColor = baseColor * shadowColor.rgb;
+    half3 ambient = SampleSH(normalWS);
+    half3 darkColor = baseColor * shadowColor.rgb * ambient * 2;
     return lerp(darkColor, litColor, lightAtten);
 }
 //高光，和边缘光一样在世界空间计算
