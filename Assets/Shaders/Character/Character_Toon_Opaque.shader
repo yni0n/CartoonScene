@@ -15,6 +15,10 @@ Shader "CartoonScene/Character/Toon_Opaque"
         _OutlineColor("Outline Color", Color) = (0.2, 0.15, 0.2, 1)
         [Toggle(_OUTLINE_ON)] _OutlineEnabled("Outline Enabled", Float) = 1
         _Cutoff("Alpha Cutoff", Range(0,1)) = 0.5
+        // 主 Pass 是否向模板缓冲写遮罩（Replace=写，Keep=不写）。
+        // 只有需要"描边不许盖住自己"的物体（角色）才盖章；
+        // 环境（地板/道具）盖章会误拦自己的描边，设为 Keep
+        [Enum(UnityEngine.Rendering.StencilOp)] _StencilWriteOp("Stencil Write Op", Float) = 2
     }
 
     SubShader
@@ -24,6 +28,13 @@ Shader "CartoonScene/Character/Toon_Opaque"
         Pass
         {
             Tags { "LightMode" = "UniversalForward" }
+            // 主 Pass 按材质开关向模板缓冲写标记（默认 Replace=盖章）
+            Stencil
+            {
+                Ref 1
+                Comp Always
+                Pass [_StencilWriteOp]
+            }
             HLSLPROGRAM
 
             #pragma vertex vert
@@ -64,6 +75,13 @@ Shader "CartoonScene/Character/Toon_Opaque"
             Name "Outline"
             Tags { "LightMode" = "SRPDefaultUnlit" }
             Cull Front
+            // 描边只画在主 Pass 没碰过的像素上（模板值 != 1），
+            // 防止薄片几何（发丝/束带）的背面壳盖在角色本体上
+            Stencil
+            {
+                Ref 1
+                Comp NotEqual
+            }
 
             HLSLPROGRAM
             #pragma vertex OutlineVert
@@ -78,7 +96,11 @@ Shader "CartoonScene/Character/Toon_Opaque"
                 float4 posCS = TransformObjectToHClip(IN.positionOS.xyz);
 
             #if defined(_OUTLINE_ON)
-                float3 viewNormal = normalize(TransformWorldToViewDir(TransformObjectToWorldNormal(IN.smoothNormalOS)));
+                // UV1 没有平滑法线数据时，退回原始法线
+                float3 nOS = dot(IN.smoothNormalOS, IN.smoothNormalOS) > 0.0001
+                           ? IN.smoothNormalOS
+                           : IN.normalOS;
+                float3 viewNormal = normalize(TransformWorldToViewDir(TransformObjectToWorldNormal(nOS)));
                 float aspect = _ScreenParams.x / _ScreenParams.y;
                 posCS.x += viewNormal.x * _OutlineWidth * posCS.w * 0.2;
                 posCS.y += viewNormal.y * _OutlineWidth * posCS.w * 0.2 * aspect * _ProjectionParams.x;

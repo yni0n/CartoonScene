@@ -7,7 +7,7 @@ using UnityEngine;
 // SmoothNormalBaker.cs
 // 用途: 编辑器工具 —— 为选中物体及其子物体的网格烘焙"按位置平均的平滑法线"，
 //       写入 UV1（shader 侧 TEXCOORD1）通道，并另存为网格资产，使编辑模式与运行时表现一致
-// 依赖: MeshFilter
+// 依赖: MeshFilter / SkinnedMeshRenderer（静态物体与蒙皮角色均支持）
 // 作者: Yang
 // ============================================
 public static class SmoothNormalBaker
@@ -29,9 +29,11 @@ public static class SmoothNormalBaker
         // 同一份源网格只烘焙一次（多个物体共用内置网格时直接复用同一份资产）
         Dictionary<Mesh, Mesh> bakedCache = new Dictionary<Mesh, Mesh>();
         List<MeshFilter> targets = new List<MeshFilter>();
+        List<SkinnedMeshRenderer> skinnedTargets = new List<SkinnedMeshRenderer>();
         foreach (GameObject root in roots)
         {
             targets.AddRange(root.GetComponentsInChildren<MeshFilter>(true));
+            skinnedTargets.AddRange(root.GetComponentsInChildren<SkinnedMeshRenderer>(true));
         }
 
         int processed = 0;
@@ -49,6 +51,26 @@ public static class SmoothNormalBaker
             if (baked != source)
             {
                 meshFilter.sharedMesh = baked;
+                processed++;
+            }
+        }
+
+        // 蒙皮网格（角色）：取/回写都走 SkinnedMeshRenderer.sharedMesh
+        // 烘焙副本会原样拷贝 boneWeights 与 bindposes，替换后蒙皮不受影响
+        foreach (SkinnedMeshRenderer skinned in skinnedTargets)
+        {
+            Mesh source = skinned.sharedMesh;
+            if (source == null) continue;
+
+            if (!bakedCache.TryGetValue(source, out Mesh baked))
+            {
+                baked = Bake(source);
+                bakedCache.Add(source, baked);
+            }
+
+            if (baked != source)
+            {
+                skinned.sharedMesh = baked;
                 processed++;
             }
         }
@@ -87,6 +109,21 @@ public static class SmoothNormalBaker
                 meshFilter.sharedMesh = source;
                 restored++;
             }
+
+            foreach (SkinnedMeshRenderer skinned in root.GetComponentsInChildren<SkinnedMeshRenderer>(true))
+            {
+                Mesh current = skinned.sharedMesh;
+                if (current == null) continue;
+
+                string path = AssetDatabase.GetAssetPath(current);
+                if (string.IsNullOrEmpty(path)) continue;
+
+                Mesh source = AssetDatabase.LoadAssetAtPath<Mesh>(path.Replace("_SmoothNormal", ""));
+                if (source == null) continue;
+
+                skinned.sharedMesh = source;
+                restored++;
+            }
         }
 
         AssetDatabase.Refresh();
@@ -99,6 +136,7 @@ public static class SmoothNormalBaker
     {
         // 全场景扫描（不依赖选中状态），避免遗漏渲染器导致资产删掉后出现 Missing
         MeshFilter[] allMeshFilters = Object.FindObjectsByType<MeshFilter>(FindObjectsSortMode.None);
+        SkinnedMeshRenderer[] allSkinned = Object.FindObjectsByType<SkinnedMeshRenderer>(FindObjectsSortMode.None);
 
         // 1. 把指向 xxx_SmoothNormal_SmoothNormal 的渲染器改回 xxx_SmoothNormal
         int relinked = 0;
@@ -107,14 +145,21 @@ public static class SmoothNormalBaker
             Mesh current = meshFilter.sharedMesh;
             if (current == null) continue;
 
-            string path = AssetDatabase.GetAssetPath(current);
-            if (string.IsNullOrEmpty(path) || !path.Contains("_SmoothNormal_SmoothNormal")) continue;
-
-            string fixedPath = path.Replace("_SmoothNormal_SmoothNormal", "_SmoothNormal");
-            Mesh fixedMesh = AssetDatabase.LoadAssetAtPath<Mesh>(fixedPath);
+            Mesh fixedMesh = ResolveNestedMesh(current);
             if (fixedMesh == null) continue;
 
             meshFilter.sharedMesh = fixedMesh;
+            relinked++;
+        }
+        foreach (SkinnedMeshRenderer skinned in allSkinned)
+        {
+            Mesh current = skinned.sharedMesh;
+            if (current == null) continue;
+
+            Mesh fixedMesh = ResolveNestedMesh(current);
+            if (fixedMesh == null) continue;
+
+            skinned.sharedMesh = fixedMesh;
             relinked++;
         }
 
@@ -137,6 +182,16 @@ public static class SmoothNormalBaker
     }
 
     // ---------- 内部实现 ----------
+
+    // 若网格指向嵌套副本资产（xxx_SmoothNormal_SmoothNormal），返回应指向的正确资产；否则返回 null
+    private static Mesh ResolveNestedMesh(Mesh current)
+    {
+        string path = AssetDatabase.GetAssetPath(current);
+        if (string.IsNullOrEmpty(path) || !path.Contains("_SmoothNormal_SmoothNormal")) return null;
+
+        string fixedPath = path.Replace("_SmoothNormal_SmoothNormal", "_SmoothNormal");
+        return AssetDatabase.LoadAssetAtPath<Mesh>(fixedPath);
+    }
 
     private static void EnsureFolder()
     {

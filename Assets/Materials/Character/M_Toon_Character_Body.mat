@@ -104,17 +104,17 @@ Material:
     - _Metallic: 0
     - _OcclusionStrength: 1
     - _OutlineEnabled: 1
-    - _OutlineWidth: 0.0263
+    - _OutlineWidth: 0.0639
     - _Parallax: 0.005
     - _QueueOffset: 0
     - _ReceiveShadows: 1
-    - _RimThreshold: 0.674
+    - _RimThreshold: 0.846
     - _ShadowSmoothness: 0.001
     - _ShadowThreshold: 0.424
     - _Smoothness: 0.5
     - _SmoothnessTextureChannel: 0
     - _SpecularHighlights: 1
-    - _SpecularPower: 39.5
+    - _SpecularPower: 34
     - _SpecularThreshold: 0.186
     - _SrcBlend: 1
     - _SrcBlendAlpha: 1
