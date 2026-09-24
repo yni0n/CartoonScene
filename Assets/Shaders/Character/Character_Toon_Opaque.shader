@@ -39,6 +39,7 @@ Shader "CartoonScene/Character/Toon_Opaque"
 
             #pragma vertex vert
             #pragma fragment frag
+            #pragma multi_compile _ _MAIN_LIGHT_SHADOWS _MAIN_LIGHT_SHADOWS_CASCADE
             #include "../Common/Toon_Common.hlsl"
 
             Varyings vert(Attributes IN)
@@ -53,7 +54,8 @@ Shader "CartoonScene/Character/Toon_Opaque"
 
             half4 frag(Varyings IN) : SV_Target
             {
-                Light mainLight = GetMainLight();
+                float4 shadowCoord = TransformWorldToShadowCoord(IN.positionWS);
+                Light mainLight = GetMainLight(shadowCoord);
                 half3 viewDirWS = normalize(GetWorldSpaceViewDir(IN.positionWS));
 
                 half4 baseMap = SampleBaseMap(IN.uv);
@@ -116,6 +118,55 @@ Shader "CartoonScene/Character/Toon_Opaque"
             half4 OutlineFrag(Varyings IN) : SV_Target
             {
                 return _OutlineColor;
+            }
+            ENDHLSL
+        }
+        Pass
+        {
+            Name "ShadowCaster"
+            Tags { "LightMode" = "ShadowCaster" }
+            ZWrite On
+            ZTest LEqual
+            ColorMask 0   // 只写深度，不写任何颜色
+
+            HLSLPROGRAM
+            #pragma vertex ShadowVert
+            #pragma fragment ShadowFrag
+
+            #include "../Common/Toon_Common.hlsl"
+
+            // 引擎渲染 shadow map 时会设置这个全局值
+            //（与 URP 官方 ShadowCasterPass.hlsl 第 13 行同款声明）
+            float3 _LightDirection;
+
+            struct ShadowVaryings
+            {
+                float4 positionCS : SV_POSITION;
+            };
+
+            ShadowVaryings ShadowVert(Attributes IN)
+            {
+                ShadowVaryings OUT;
+                float3 positionWS = TransformObjectToWorld(IN.positionOS.xyz);
+                float3 normalWS = TransformObjectToWorldNormal(IN.normalOS);
+
+                // 沿法线+光方向偏移一个微小量，防止表面把自己挡住（shadow acne 条纹）
+                float4 positionCS = TransformWorldToHClip(
+                    ApplyShadowBias(positionWS, normalWS, _LightDirection));
+
+                #if UNITY_REVERSED_Z
+                    positionCS.z = min(positionCS.z, UNITY_NEAR_CLIP_VALUE);
+                #else
+                    positionCS.z = max(positionCS.z, UNITY_NEAR_CLIP_VALUE);
+                #endif
+
+                OUT.positionCS = positionCS;
+                return OUT;
+            }
+
+            half4 ShadowFrag(ShadowVaryings IN) : SV_Target
+            {
+                return 0;
             }
             ENDHLSL
         }

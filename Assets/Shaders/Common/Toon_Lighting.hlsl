@@ -15,6 +15,7 @@ half3 ToonDiffuse(half3 baseColor, half3 normalWS, Light mainLight,
 {
     half NdotL = dot(normalWS, mainLight.direction);
     half lambert = NdotL * 0.5 + 0.5;
+    lambert *= mainLight.shadowAttenuation;   // 影子也过同一个 smoothstep 阈值
     half lightAtten = smoothstep(threshold - smoothness, threshold + smoothness, lambert);
 
     half3 litColor = baseColor * mainLight.color;
