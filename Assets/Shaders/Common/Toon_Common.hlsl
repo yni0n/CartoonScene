@@ -24,6 +24,7 @@ CBUFFER_START(UnityPerMaterial)
     half _OutlineWidth;
     half4 _OutlineColor;
     half _OutlineEnabled;
+    half _Cutoff;
 CBUFFER_END
 
 #include "Toon_Surface.hlsl"

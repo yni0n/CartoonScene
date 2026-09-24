@@ -14,6 +14,7 @@ Shader "CartoonScene/Character/Toon_Opaque"
         _OutlineWidth("Outline Width", Range(0, 0.1)) = 0.02
         _OutlineColor("Outline Color", Color) = (0.2, 0.15, 0.2, 1)
         [Toggle(_OUTLINE_ON)] _OutlineEnabled("Outline Enabled", Float) = 1
+        _Cutoff("Alpha Cutoff", Range(0,1)) = 0.5
     }
 
     SubShader
@@ -44,7 +45,9 @@ Shader "CartoonScene/Character/Toon_Opaque"
                 Light mainLight = GetMainLight();
                 half3 viewDirWS = normalize(GetWorldSpaceViewDir(IN.positionWS));
 
-                half3 baseColor = SampleBaseMap(IN.uv).rgb * _BaseColor.rgb;
+                half4 baseMap = SampleBaseMap(IN.uv);
+                clip(baseMap.a - _Cutoff);          // alpha 小于阈值 → 丢弃该像素
+                half3 baseColor = baseMap.rgb * _BaseColor.rgb;
                 half3 color = ToonDiffuse(baseColor, IN.normalWS, mainLight,
                                           _ShadowThreshold, _ShadowSmoothness, _ShadowColor);
                 color += ToonSpecular(IN.normalWS, viewDirWS, mainLight,
