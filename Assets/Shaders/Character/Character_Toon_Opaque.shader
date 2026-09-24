@@ -13,6 +13,7 @@ Shader "CartoonScene/Character/Toon_Opaque"
         _RimThreshold("Rim Threshold", Range(0, 1)) = 0.6
         _OutlineWidth("Outline Width", Range(0, 0.1)) = 0.02
         _OutlineColor("Outline Color", Color) = (0.2, 0.15, 0.2, 1)
+        [Toggle(_OUTLINE_ON)] _OutlineEnabled("Outline Enabled", Float) = 1
     }
 
     SubShader
@@ -64,6 +65,7 @@ Shader "CartoonScene/Character/Toon_Opaque"
             HLSLPROGRAM
             #pragma vertex OutlineVert
             #pragma fragment OutlineFrag
+            #pragma shader_feature_local _OUTLINE_ON
 
             #include "../Common/Toon_Common.hlsl"
 
@@ -71,14 +73,18 @@ Shader "CartoonScene/Character/Toon_Opaque"
             {
                 Varyings OUT;
                 float4 posCS = TransformObjectToHClip(IN.positionOS.xyz);
-                float3 outlineNormalOS = dot(IN.smoothNormalOS, IN.smoothNormalOS) > 0.001
-                       ? IN.smoothNormalOS
-                       : IN.normalOS;
-                float3 viewNormal = normalize(TransformWorldToViewDir(TransformObjectToWorldNormal(outlineNormalOS)));
+
+            #if defined(_OUTLINE_ON)
+                float3 viewNormal = normalize(TransformWorldToViewDir(TransformObjectToWorldNormal(IN.smoothNormalOS)));
                 float aspect = _ScreenParams.x / _ScreenParams.y;
                 posCS.x += viewNormal.x * _OutlineWidth * posCS.w * 0.2;
                 posCS.y += viewNormal.y * _OutlineWidth * posCS.w * 0.2 * aspect * _ProjectionParams.x;
                 OUT.positionHCS = posCS;
+            #else
+                // keyword 关闭：把顶点塌缩到退化图元，GPU 不会产生任何像素
+                OUT.positionHCS = float4(0, 0, 0, 0);
+            #endif
+
                 return OUT;
             }
 
