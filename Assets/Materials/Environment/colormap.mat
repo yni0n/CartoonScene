@@ -105,7 +105,7 @@ Material:
     - _OcclusionStrength: 1
     - _OutlineEnabled: 1
     - _OutlineStencilMode: 8
-    - _OutlineWidth: 0.0404
+    - _OutlineWidth: 0.028
     - _Parallax: 0.005
     - _QueueOffset: 0
     - _ReceiveShadows: 1

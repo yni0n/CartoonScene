@@ -134,7 +134,8 @@ public static class EnvironmentLayerAssigner
                     flatCount++;
                     if (flatNames.Count < 20) flatNames.Add(modelName);
                 }
-                else if (!AssetDatabase.GetAssetPath(current).Equals(colormap))
+                else if (!AssetDatabase.GetAssetPath(current).Equals(ColormapPath,
+                         System.StringComparison.Ordinal))
                 {
                     // 挂在变体上但不属于任何分类 → 恢复共享 colormap（清理历史误判）
                     renderer.sharedMaterial = colormap;

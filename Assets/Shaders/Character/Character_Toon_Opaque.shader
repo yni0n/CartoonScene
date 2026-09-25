@@ -51,9 +51,6 @@ Shader "CartoonScene/Character/Toon_Opaque"
             #pragma multi_compile _ _MAIN_LIGHT_SHADOWS _MAIN_LIGHT_SHADOWS_CASCADE
             #include "../Common/Toon_Common.hlsl"
             #pragma multi_compile _ _ADDITIONAL_LIGHTS
-            // Forward+ / Deferred+ 集群灯光：Renderer 是 Forward+ 时，附加光按屏幕
-            // 瓦片分配而非按物体分配，缺这个变体会导致 GetAdditionalLightsCount()=0
-            #pragma multi_compile _ _FORWARD_PLUS _CLUSTER_LIGHT_LOOP
             #pragma shader_feature_local SWAY_ON
 
             Varyings vert(Attributes IN)

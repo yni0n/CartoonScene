@@ -106,7 +106,7 @@ Material:
     - _OcclusionStrength: 1
     - _OutlineEnabled: 1
     - _OutlineStencilMode: 6
-    - _OutlineWidth: 0.0404
+    - _OutlineWidth: 0.032
     - _Parallax: 0.005
     - _QueueOffset: 0
     - _ReceiveShadows: 1
@@ -126,7 +126,7 @@ Material:
     - _SwayEnabled: 1
     - _SwayHeightScale: 0.3
     - _SwaySpeed: 1.2
-    - _SwayStrength: 0.05
+    - _SwayStrength: 0.2
     - _WorkflowMode: 1
     - _XRMotionVectorsPass: 1
     - _ZWrite: 1
