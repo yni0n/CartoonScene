@@ -182,21 +182,33 @@ public static class EnvironmentLayerAssigner
         return false;
     }
 
-    // 从 colormap 派生变体材质（改层号与描边模式），存在则直接复用
+    // 从 colormap 派生变体材质（改层号与描边模式），存在则直接复用并刷新参数
     private static Material GetDerivedMaterial(string path, float layer, float stencilMode, string name)
     {
         Material derived = AssetDatabase.LoadAssetAtPath<Material>(path);
-        if (derived != null) return derived;
+        if (derived == null)
+        {
+            Material colormap = AssetDatabase.LoadAssetAtPath<Material>(ColormapPath);
+            if (colormap == null) return null;
 
-        Material colormap = AssetDatabase.LoadAssetAtPath<Material>(ColormapPath);
-        if (colormap == null) return null;
+            derived = new Material(colormap); // 拷贝 shader 与全部属性（含 _BaseMap）
+            derived.name = name;
+            AssetDatabase.CreateAsset(derived, path);
+            Debug.Log($"已生成 {path}（colormap 副本）");
+        }
 
-        derived = new Material(colormap); // 拷贝 shader 与全部属性（含 _BaseMap）
-        derived.name = name;
         derived.SetFloat("_StencilRef", layer);
         derived.SetFloat("_OutlineStencilMode", stencilMode);
-        AssetDatabase.CreateAsset(derived, path);
-        Debug.Log($"已生成 {path}（colormap 副本，层{(int)layer}）");
+
+        // 树木变体：开启顶点摆动（shader 端 SWAY_ON + 参数），每次重跑都刷新，改默认值也生效
+        if (name == "colormap_block")
+        {
+            derived.SetFloat("_SwayEnabled", 1f);
+            derived.SetFloat("_SwayStrength", 0.05f);
+            derived.SetFloat("_SwaySpeed", 1.2f);
+            derived.SetFloat("_SwayHeightScale", 0.3f);
+        }
+        EditorUtility.SetDirty(derived);
         return derived;
     }
 }

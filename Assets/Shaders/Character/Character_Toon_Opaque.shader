@@ -23,6 +23,11 @@ Shader "CartoonScene/Character/Toon_Opaque"
         // 描边 Pass 的模板测试模式：NotEqual(6)=避开同层（开放几何防糊脸），
         // Always(8)=不拦截（封闭物体，保留内部结构褶皱线）
         [Enum(UnityEngine.Rendering.CompareFunction)] _OutlineStencilMode("Outline Stencil Mode", Float) = 6
+        // 树木摆动：只给树木变体材质开（SWAY_ON），其他物体保持 0
+        [Toggle(SWAY_ON)] _SwayEnabled("Sway Enabled", Float) = 0
+        _SwayStrength("Sway Strength", Range(0, 0.2)) = 0.05
+        _SwaySpeed("Sway Speed", Range(0, 4)) = 1.2
+        _SwayHeightScale("Sway Height Scale", Range(0.05, 1)) = 0.3
     }
 
     SubShader
@@ -49,14 +54,17 @@ Shader "CartoonScene/Character/Toon_Opaque"
             // Forward+ / Deferred+ 集群灯光：Renderer 是 Forward+ 时，附加光按屏幕
             // 瓦片分配而非按物体分配，缺这个变体会导致 GetAdditionalLightsCount()=0
             #pragma multi_compile _ _FORWARD_PLUS _CLUSTER_LIGHT_LOOP
+            #pragma shader_feature_local SWAY_ON
 
             Varyings vert(Attributes IN)
             {
                 Varyings OUT;
-                OUT.positionHCS = TransformObjectToHClip(IN.positionOS.xyz);
+                float3 positionWS = TransformObjectToWorld(IN.positionOS.xyz)
+                                  + ToonSwayOffsetWS(IN.positionOS.xyz);
+                OUT.positionHCS = TransformWorldToHClip(positionWS);
                 OUT.uv = TRANSFORM_TEX(IN.uv, _BaseMap);
                 OUT.normalWS = TransformObjectToWorldNormal(IN.normalOS);
-                OUT.positionWS = TransformObjectToWorld(IN.positionOS.xyz);
+                OUT.positionWS = positionWS;
                 return OUT;
             }
 
@@ -100,13 +108,17 @@ Shader "CartoonScene/Character/Toon_Opaque"
             #pragma vertex OutlineVert
             #pragma fragment OutlineFrag
             #pragma shader_feature_local _OUTLINE_ON
+            #pragma shader_feature_local SWAY_ON
 
             #include "../Common/Toon_Common.hlsl"
 
             Varyings OutlineVert(Attributes IN)
             {
                 Varyings OUT;
-                float4 posCS = TransformObjectToHClip(IN.positionOS.xyz);
+                // 基础位置先做与主 Pass 相同的摆动偏移，描边壳才不会与本体分离
+                float3 positionWS = TransformObjectToWorld(IN.positionOS.xyz)
+                                  + ToonSwayOffsetWS(IN.positionOS.xyz);
+                float4 posCS = TransformWorldToHClip(positionWS);
 
             #if defined(_OUTLINE_ON)
                 // UV1 没有平滑法线数据时，退回原始法线
@@ -143,6 +155,7 @@ Shader "CartoonScene/Character/Toon_Opaque"
             HLSLPROGRAM
             #pragma vertex ShadowVert
             #pragma fragment ShadowFrag
+            #pragma shader_feature_local SWAY_ON
 
             #include "../Common/Toon_Common.hlsl"
 
@@ -158,7 +171,8 @@ Shader "CartoonScene/Character/Toon_Opaque"
             ShadowVaryings ShadowVert(Attributes IN)
             {
                 ShadowVaryings OUT;
-                float3 positionWS = TransformObjectToWorld(IN.positionOS.xyz);
+                float3 positionWS = TransformObjectToWorld(IN.positionOS.xyz)
+                                  + ToonSwayOffsetWS(IN.positionOS.xyz);
                 float3 normalWS = TransformObjectToWorldNormal(IN.normalOS);
 
                 // 沿法线+光方向偏移一个微小量，防止表面把自己挡住（shadow acne 条纹）
