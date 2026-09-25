@@ -15,10 +15,14 @@ Shader "CartoonScene/Character/Toon_Opaque"
         _OutlineColor("Outline Color", Color) = (0.2, 0.15, 0.2, 1)
         [Toggle(_OUTLINE_ON)] _OutlineEnabled("Outline Enabled", Float) = 1
         _Cutoff("Alpha Cutoff", Range(0,1)) = 0.5
-        // 主 Pass 是否向模板缓冲写遮罩（Replace=写，Keep=不写）。
-        // 只有需要"描边不许盖住自己"的物体（角色）才盖章；
-        // 环境（地板/道具）盖章会误拦自己的描边，设为 Keep
+        // Stencil 层号：物体用主 Pass 盖"自己层"的章，描边 Pass 只避开同层像素。
+        // 分层后互不误伤：角色(1)描边可画在地面(2)接触处；帐篷壳被自己层(3)拦下
+        _StencilRef("Stencil Ref", Range(0, 255)) = 1
+        // 主 Pass 是否向模板缓冲写标记（Replace=写，Keep=不写）
         [Enum(UnityEngine.Rendering.StencilOp)] _StencilWriteOp("Stencil Write Op", Float) = 2
+        // 描边 Pass 的模板测试模式：NotEqual(6)=避开同层（开放几何防糊脸），
+        // Always(8)=不拦截（封闭物体，保留内部结构褶皱线）
+        [Enum(UnityEngine.Rendering.CompareFunction)] _OutlineStencilMode("Outline Stencil Mode", Float) = 6
     }
 
     SubShader
@@ -28,10 +32,10 @@ Shader "CartoonScene/Character/Toon_Opaque"
         Pass
         {
             Tags { "LightMode" = "UniversalForward" }
-            // 主 Pass 按材质开关向模板缓冲写标记（默认 Replace=盖章）
+            // 主 Pass 盖"自己层"的章（层号来自材质属性 _StencilRef）
             Stencil
             {
-                Ref 1
+                Ref [_StencilRef]
                 Comp Always
                 Pass [_StencilWriteOp]
             }
@@ -41,6 +45,7 @@ Shader "CartoonScene/Character/Toon_Opaque"
             #pragma fragment frag
             #pragma multi_compile _ _MAIN_LIGHT_SHADOWS _MAIN_LIGHT_SHADOWS_CASCADE
             #include "../Common/Toon_Common.hlsl"
+            #pragma multi_compile _ _ADDITIONAL_LIGHTS
 
             Varyings vert(Attributes IN)
             {
@@ -66,6 +71,7 @@ Shader "CartoonScene/Character/Toon_Opaque"
                 color += ToonSpecular(IN.normalWS, viewDirWS, mainLight,
                                       _SpecularPower, _SpecularThreshold);
                 color += ToonRim(IN.normalWS, viewDirWS, _RimColor.rgb, _RimThreshold);
+                color += ToonAdditionalLights(baseColor, IN.normalWS, IN.positionWS);
                 return half4(color, 1);
             }
 
@@ -75,14 +81,16 @@ Shader "CartoonScene/Character/Toon_Opaque"
         Pass
         {
             Name "Outline"
-            Tags { "LightMode" = "SRPDefaultUnlit" }
+            // 自定义 LightMode：不再随不透明队列混排，由 ToonOutlineFeature
+            // 在"所有不透明物体画完之后"统一绘制（保证盖章先于描边）
+            Tags { "LightMode" = "ToonOutline" }
             Cull Front
-            // 描边只画在主 Pass 没碰过的像素上（模板值 != 1），
-            // 防止薄片几何（发丝/束带）的背面壳盖在角色本体上
+            // 描边只画在"非自己层"的像素上：
+            // 开放几何（帐篷布/地贴平面）的背面壳会被同层的章拦下，不再糊在表面上
             Stencil
             {
-                Ref 1
-                Comp NotEqual
+                Ref [_StencilRef]
+                Comp [_OutlineStencilMode]
             }
 
             HLSLPROGRAM

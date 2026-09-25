@@ -100,10 +100,7 @@ public static class SmoothNormalBaker
                 Mesh current = meshFilter.sharedMesh;
                 if (current == null) continue;
 
-                string path = AssetDatabase.GetAssetPath(current);
-                if (string.IsNullOrEmpty(path)) continue;
-
-                Mesh source = AssetDatabase.LoadAssetAtPath<Mesh>(path.Replace("_SmoothNormal", ""));
+                Mesh source = FindOriginalMesh(current);
                 if (source == null) continue;
 
                 meshFilter.sharedMesh = source;
@@ -115,10 +112,7 @@ public static class SmoothNormalBaker
                 Mesh current = skinned.sharedMesh;
                 if (current == null) continue;
 
-                string path = AssetDatabase.GetAssetPath(current);
-                if (string.IsNullOrEmpty(path)) continue;
-
-                Mesh source = AssetDatabase.LoadAssetAtPath<Mesh>(path.Replace("_SmoothNormal", ""));
+                Mesh source = FindOriginalMesh(current);
                 if (source == null) continue;
 
                 skinned.sharedMesh = source;
@@ -129,6 +123,37 @@ public static class SmoothNormalBaker
         AssetDatabase.Refresh();
         SceneView.RepaintAll();
         Debug.Log($"[SmoothNormalBaker] 已还原 {restored} 个渲染器的原始网格。");
+    }
+
+    // 按烘焙网格名定位原始网格：
+    // 1) 旧约定：同目录同名独立资产（去掉 _SmoothNormal 后缀）
+    // 2) 原始网格是 FBX 内部子资产（Kenney/角色均属此类）：
+    //    扫描工程内所有模型文件，在其子资产中按网格名精确匹配
+    private static Mesh FindOriginalMesh(Mesh baked)
+    {
+        const string suffix = "_SmoothNormal";
+        if (!baked.name.EndsWith(suffix)) return null;
+        string baseName = baked.name.Substring(0, baked.name.Length - suffix.Length);
+
+        // 旧约定优先（独立 .asset 网格）
+        string bakedPath = AssetDatabase.GetAssetPath(baked);
+        if (!string.IsNullOrEmpty(bakedPath))
+        {
+            Mesh legacy = AssetDatabase.LoadAssetAtPath<Mesh>(bakedPath.Replace(suffix, ""));
+            if (legacy != null) return legacy;
+        }
+
+        // FBX 子资产匹配：全工程模型文件扫一遍（编辑器菜单一次性操作，可接受）
+        string[] modelGuids = AssetDatabase.FindAssets("t:Model");
+        foreach (string guid in modelGuids)
+        {
+            string modelPath = AssetDatabase.GUIDToAssetPath(guid);
+            foreach (Object sub in AssetDatabase.LoadAllAssetRepresentationsAtPath(modelPath))
+            {
+                if (sub is Mesh m && m.name == baseName) return m;
+            }
+        }
+        return null;
     }
 
     [MenuItem("Tools/CartoonScene/Clean Nested Baked Meshes")]

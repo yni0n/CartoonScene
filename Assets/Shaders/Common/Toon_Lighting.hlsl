@@ -37,5 +37,17 @@ half3 ToonRim(half3 normalWS, half3 viewDirWS, half3 rimColor, half threshold)
     half rim = 1.0 - saturate(dot(normalWS, viewDirWS));
     return rimColor * smoothstep(threshold, threshold + 0.2, rim);
 }
-
+//附加光（点光源等）：篝火氛围光。柔和 lambert、不带阈值量化、不算阴影
+half3 ToonAdditionalLights(half3 baseColor, half3 normalWS, half3 positionWS)
+{
+    half3 add = 0;
+    uint count = GetAdditionalLightsCount();
+    for (uint i = 0; i < count; i++)
+    {
+        Light l = GetAdditionalLight(i, positionWS);
+        half NdotL = saturate(dot(normalWS, l.direction)) * 0.5 + 0.5;
+        add += baseColor * l.color * l.distanceAttenuation * NdotL;
+    }
+    return add;
+}
 #endif
